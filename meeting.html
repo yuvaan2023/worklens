@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meeting Details - WorkLens AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50">
+    <div id="root"></div>
+    <script>
+        const API_URL = '';
+        const token = localStorage.getItem('token');
+        
+        if (!token) {
+            window.location.href = '/';
+        }
+        
+        // Get meeting ID from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const meetingId = urlParams.get('id');
+        
+        async function loadMeeting() {
+            try {
+                const res = await fetch(`/api/meetings/${meetingId}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (res.ok) {
+                    const meeting = await res.json();
+                    renderMeeting(meeting);
+                } else {
+                    document.getElementById('root').innerHTML = '<div class="text-center py-20">Meeting not found</div>';
+                }
+            } catch (err) {
+                document.getElementById('root').innerHTML = '<div class="text-center py-20">Error loading meeting</div>';
+            }
+        }
+        
+        function renderMeeting(meeting) {
+            document.getElementById('root').innerHTML = `
+                <div class="max-w-4xl mx-auto px-4 py-8">
+                    <div class="mb-6">
+                        <a href="/" class="text-blue-600 hover:underline">← Back to Dashboard</a>
+                    </div>
+                    
+                    <div class="bg-white rounded-2xl shadow-lg p-8">
+                        <h1 class="text-3xl font-bold mb-2">${escapeHtml(meeting.title)}</h1>
+                        <p class="text-gray-500 mb-6">${new Date(meeting.date).toLocaleString()}</p>
+                        
+                        <div class="border-t pt-6">
+                            <h2 class="text-xl font-semibold mb-4">Meeting Notes</h2>
+                            <textarea id="notes" rows="6" class="w-full p-3 border rounded-lg" placeholder="Add your meeting notes here...">${meeting.notes || ''}</textarea>
+                            <button onclick="saveNotes(${meeting.id})" class="mt-3 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">Save Notes</button>
+                        </div>
+                        
+                        <div class="border-t mt-6 pt-6">
+                            <h2 class="text-xl font-semibold mb-4">Action Items</h2>
+                            <div id="actionItems"></div>
+                            <div class="flex gap-2 mt-4">
+                                <input type="text" id="newTask" placeholder="Add a task..." class="flex-1 p-2 border rounded-lg">
+                                <button onclick="addActionItem(${meeting.id})" class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700">Add</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            loadActionItems(meeting.id);
+        }
+        
+        async function loadActionItems(meetingId) {
+            try {
+                const res = await fetch(`/api/meetings/${meetingId}/actions`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (res.ok) {
+                    const items = await res.json();
+                    const container = document.getElementById('actionItems');
+                    if (items.length === 0) {
+                        container.innerHTML = '<p class="text-gray-500 text-center py-4">No action items yet. Add one above!</p>';
+                    } else {
+                        container.innerHTML = items.map(item => `
+                            <div class="flex items-center justify-between p-3 border rounded-lg mb-2">
+                                <div class="flex items-center gap-3">
+                                    <input type="checkbox" ${item.status === 'completed' ? 'checked' : ''} onchange="toggleAction(${item.id}, ${meetingId})">
+                                    <span class="${item.status === 'completed' ? 'line-through text-gray-400' : ''}">${escapeHtml(item.task)}</span>
+                                </div>
+                                <button onclick="deleteAction(${item.id}, ${meetingId})" class="text-red-500 hover:text-red-700 text-sm">Delete</button>
+                            </div>
+                        `).join('');
+                    }
+                }
+            } catch (err) {
+                console.error('Error loading actions:', err);
+            }
+        }
+        
+        async function saveNotes(meetingId) {
+            const notes = document.getElementById('notes').value;
+            const res = await fetch(`/api/meetings/${meetingId}`, {
+                method: 'PATCH',
+                headers: { 
+                    'Content-Type': 'application/json', 
+                    'Authorization': `Bearer ${token}` 
+                },
+                body: JSON.stringify({ notes })
+            });
+            if (res.ok) {
+                alert('Notes saved!');
+            } else {
+                alert('Failed to save notes');
+            }
+        }
+        
+        async function addActionItem(meetingId) {
+            const task = document.getElementById('newTask').value;
+            if (!task) return;
+            
+            const res = await fetch(`/api/meetings/${meetingId}/actions`, {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json', 
+                    'Authorization': `Bearer ${token}` 
+                },
+                body: JSON.stringify({ task })
+            });
+            
+            if (res.ok) {
+                document.getElementById('newTask').value = '';
+                loadActionItems(meetingId);
+            } else {
+                alert('Failed to add action item');
+            }
+        }
+        
+        async function toggleAction(id, meetingId) {
+            const res = await fetch(`/api/actions/${id}/toggle`, {
+                method: 'PATCH',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
+                loadActionItems(meetingId);
+            }
+        }
+        
+        async function deleteAction(id, meetingId) {
+            if (confirm('Delete this action item?')) {
+                const res = await fetch(`/api/actions/${id}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (res.ok) {
+                    loadActionItems(meetingId);
+                }
+            }
+        }
+        
+        function escapeHtml(text) {
+            if (!text) return '';
+            return text.replace(/[&<>]/g, function(m) {
+                if (m === '&') return '&amp;';
+                if (m === '<') return '&lt;';
+                if (m === '>') return '&gt;';
+                return m;
+            });
+        }
+        
+        loadMeeting();
+    </script>
+</body>
+</html>
