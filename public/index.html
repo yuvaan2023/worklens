@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WorkLens AI - Meeting Intelligence</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @keyframes float { 0%,100%{transform:translateY(0px)}50%{transform:translateY(-20px)}}
+        .float-animation{animation:float 3s ease-in-out infinite}
+    </style>
+</head>
+<body class="bg-gradient-to-br from-gray-50 via-white to-gray-100">
+    <div id="root"></div>
+    <div id="toast"></div>
+    <script>
+        const API_URL = '';
+        let authToken = localStorage.getItem('token');
+        
+        function showToast(m, t) {
+            const toast = document.getElementById('toast');
+            toast.innerHTML = `<div style="position:fixed;bottom:20px;right:20px;background:${t==='error'?'#ef4444':'#10b981'};color:white;padding:12px 24px;border-radius:8px;z-index:1000">${m}</div>`;
+            setTimeout(() => toast.innerHTML = '', 3000);
+        }
+        
+        async function checkAuth() {
+            if (authToken) {
+                try {
+                    const res = await fetch('/api/meetings', { headers: { Authorization: `Bearer ${authToken}` } });
+                    if (res.ok) { renderDashboard(); return; }
+                } catch(e) {}
+                localStorage.removeItem('token');
+            }
+            renderLanding();
+        }
+        
+        function renderLanding() {
+            document.getElementById('root').innerHTML = `
+                <nav class="bg-white/80 backdrop-blur-lg shadow-sm sticky top-0 z-50">
+                    <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
+                        <div class="flex items-center cursor-pointer" onclick="scrollToTop()">
+                            <div class="h-8 w-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center text-white font-bold">W</div>
+                            <span class="ml-2 text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">WorkLens AI</span>
+                        </div>
+                        <div class="flex gap-4">
+                            <button onclick="showLoginModal()" class="text-gray-700">Login</button>
+                            <button onclick="showRegisterModal()" class="bg-blue-600 text-white px-4 py-2 rounded-lg">Sign Up Free</button>
+                        </div>
+                    </div>
+                </nav>
+                <div class="max-w-7xl mx-auto px-4 py-24 text-center">
+                    <div class="float-animation inline-block mb-6">
+                        <div class="h-20 w-20 bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto text-3xl">🎯</div>
+                    </div>
+                    <h1 class="text-5xl md:text-6xl font-bold text-gray-900 mb-6">AI-Powered Meeting<br><span class="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Intelligence</span></h1>
+                    <p class="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">Automatically capture, transcribe, and summarize your meetings. Get actionable insights from every conversation.</p>
+                    <div class="flex justify-center gap-4">
+                        <button onclick="showRegisterModal()" class="bg-blue-600 text-white px-8 py-3 rounded-lg font-semibold">Start Free →</button>
+                        <a href="/pricing" class="border-2 border-gray-300 text-gray-700 px-8 py-3 rounded-lg">View Pricing</a>
+                    </div>
+                </div>
+                <div class="bg-white py-24">
+                    <div class="max-w-7xl mx-auto px-4">
+                        <div class="grid md:grid-cols-3 gap-8 text-center">
+                            <div><div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">🎙️</div><h3 class="text-xl font-semibold">Smart Transcription</h3><p class="text-gray-600">Real-time transcription with speaker identification</p></div>
+                            <div><div class="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">🤖</div><h3 class="text-xl font-semibold">AI Summaries</h3><p class="text-gray-600">Get key insights and action items automatically</p></div>
+                            <div><div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">🔍</div><h3 class="text-xl font-semibold">Smart Search</h3><p class="text-gray-600">Search across all meetings and screenshots</p></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        function showLoginModal() { showAuthModal('login'); }
+        function showRegisterModal() { showAuthModal('register'); }
+        
+        async function showAuthModal(mode) {
+            const isLogin = mode === 'login';
+            const html = `
+                <div id="authModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div class="bg-white rounded-2xl p-8 max-w-md w-full mx-4 relative">
+                        <h2 class="text-2xl font-bold mb-4">${isLogin ? 'Welcome Back' : 'Create Account'}</h2>
+                        <div id="authError" class="hidden bg-red-100 text-red-700 p-3 rounded-lg mb-4"></div>
+                        <form id="authForm">
+                            ${!isLogin ? '<input type="text" id="name" placeholder="Full Name" class="w-full p-3 border rounded-lg mb-3">' : ''}
+                            <input type="email" id="email" placeholder="Email" class="w-full p-3 border rounded-lg mb-3" required>
+                            <input type="password" id="password" placeholder="Password (min 8 characters)" class="w-full p-3 border rounded-lg mb-4" required>
+                            <button type="submit" class="w-full bg-blue-600 text-white p-3 rounded-lg font-semibold">${isLogin ? 'Login' : 'Sign Up'}</button>
+                        </form>
+                        <p class="mt-4 text-center">${isLogin ? "Don't have an account? " : "Already have an account? "}
+                            <a href="#" onclick="${isLogin ? 'showRegisterModal()' : 'showLoginModal()'}; return false;" class="text-blue-600">${isLogin ? 'Sign Up' : 'Login'}</a>
+                        </p>
+                        <button onclick="closeModal()" class="absolute top-4 right-4 text-gray-500">✕</button>
+                    </div>
+                </div>
+            `;
+            document.getElementById('root').insertAdjacentHTML('beforeend', html);
+            document.getElementById('authForm').onsubmit = async (e) => {
+                e.preventDefault();
+                const email = document.getElementById('email').value;
+                const password = document.getElementById('password').value;
+                const name = document.getElementById('name')?.value;
+                const errorDiv = document.getElementById('authError');
+                try {
+                    const res = await fetch(`/api/auth/${mode}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ email, password, name })
+                    });
+                    const data = await res.json();
+                    if (res.ok) {
+                        localStorage.setItem('token', data.token);
+                        authToken = data.token;
+                        closeModal();
+                        renderDashboard();
+                        showToast(`Welcome ${data.user.name || data.user.email}!`);
+                    } else {
+                        errorDiv.textContent = data.error;
+                        errorDiv.classList.remove('hidden');
+                    }
+                } catch (err) {
+                    errorDiv.textContent = 'Network error. Please try again.';
+                    errorDiv.classList.remove('hidden');
+                }
+            };
+        }
+        
+        function closeModal() { const modal = document.getElementById('authModal'); if(modal) modal.remove(); }
+        
+        async function renderDashboard() {
+            const token = localStorage.getItem('token');
+            if (!token) { renderLanding(); return; }
+            try {
+                const [meetingsRes, statsRes, subRes] = await Promise.all([
+                    fetch('/api/meetings', { headers: { Authorization: `Bearer ${token}` } }),
+                    fetch('/api/stats', { headers: { Authorization: `Bearer ${token}` } }),
+                    fetch('/api/subscription/current', { headers: { Authorization: `Bearer ${token}` } })
+                ]);
+                if (!meetingsRes.ok) throw new Error('Auth failed');
+                const meetings = await meetingsRes.json();
+                const stats = await statsRes.json();
+                const subscription = await subRes.json();
+                document.getElementById('root').innerHTML = `
+                    <nav class="bg-white shadow-sm sticky top-0 z-50">
+                        <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
+                            <div class="flex items-center gap-2 cursor-pointer" onclick="showTab('meetings')">
+                                <div class="h-8 w-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center text-white font-bold">W</div>
+                                <span class="text-xl font-bold">WorkLens AI</span>
+                            </div>
+                            <div class="flex items-center gap-4">
+                                <span class="px-3 py-1 bg-gray-100 rounded-full text-sm">${subscription.plan === 'free' ? 'Free' : 'Pro'} Plan</span>
+                                <button onclick="logout()" class="text-red-600">Logout</button>
+                            </div>
+                        </div>
+                    </nav>
+                    <div class="max-w-7xl mx-auto px-4 py-8">
+                        <div class="grid grid-cols-4 gap-6 mb-8">
+                            <div class="bg-white rounded-xl p-6 shadow-sm"><div class="text-3xl font-bold text-blue-600">${stats.totalMeetings || 0}</div><div>Total Meetings</div></div>
+                            <div class="bg-white rounded-xl p-6 shadow-sm"><div class="text-3xl font-bold text-green-600">${stats.totalHours || 0}</div><div>Hours Recorded</div></div>
+                            <div class="bg-white rounded-xl p-6 shadow-sm"><div class="text-3xl font-bold text-purple-600">${stats.totalActionItems || 0}</div><div>Action Items</div></div>
+                            <div class="bg-white rounded-xl p-6 shadow-sm"><div class="text-3xl font-bold text-orange-600">${stats.completedItems || 0}</div><div>Completed</div></div>
+                        </div>
+                        <div class="border-b mb-6 flex gap-8">
+                            <button onclick="showTab('meetings')" id="meetingsBtn" class="pb-2 border-b-2 border-blue-500 text-blue-600">Meetings</button>
+                            <button onclick="showTab('pricing')" id="pricingBtn" class="pb-2 text-gray-500">Pricing</button>
+                            <button onclick="showTab('settings')" id="settingsBtn" class="pb-2 text-gray-500">Settings</button>
+                        </div>
+                        <div id="meetingsPanel">
+                            <div class="flex justify-between mb-6"><h2 class="text-2xl font-bold">Your Meetings</h2><button onclick="createMeeting()" class="bg-blue-600 text-white px-4 py-2 rounded-lg">+ New Meeting</button></div>
+                            <div id="meetingsList" class="space-y-4"></div>
+                        </div>
+                        <div id="pricingPanel" class="hidden"><div class="grid md:grid-cols-3 gap-8"><div class="bg-white rounded-xl p-6"><h3 class="text-xl font-bold">Free</h3><div class="text-3xl font-bold mt-2">$0</div><ul class="mt-4 space-y-2"><li>✓ 5 meetings/month</li><li>✓ 100MB storage</li></ul><button class="w-full mt-6 bg-gray-100 py-2 rounded-lg">Current Plan</button></div><div class="bg-white rounded-xl p-6 ring-2 ring-blue-500"><div class="bg-blue-500 text-white px-3 py-1 rounded-full inline-block text-sm">Popular</div><h3 class="text-xl font-bold mt-2">Pro</h3><div class="text-3xl font-bold">$19</div><p class="text-gray-600 text-sm">per month</p><ul class="mt-4 space-y-2"><li>✓ 100 meetings/month</li><li>✓ 10GB storage</li><li>✓ AI summaries</li><li>✓ Action items</li></ul><button onclick="alert('Upgrade coming soon')" class="w-full mt-6 bg-blue-600 text-white py-2 rounded-lg">Upgrade</button></div><div class="bg-white rounded-xl p-6"><h3 class="text-xl font-bold">Business</h3><div class="text-3xl font-bold mt-2">$49</div><ul class="mt-4 space-y-2"><li>✓ 500 meetings/month</li><li>✓ Team collaboration</li></ul><button onclick="alert('Contact sales')" class="w-full mt-6 bg-gray-100 py-2 rounded-lg">Contact</button></div></div></div>
+                        <div id="settingsPanel" class="hidden"><div class="bg-white rounded-xl p-6"><h2 class="text-xl font-bold mb-4">Account Settings</h2><p><strong>Plan:</strong> ${subscription.plan}</p><p><strong>Meetings limit:</strong> ${subscription.meeting_limit || 5} per month</p><button onclick="if(confirm('Delete account?')) alert('Contact support')" class="mt-4 text-red-600">Delete Account</button></div></div>
+                    </div>
+                `;
+                const container = document.getElementById('meetingsList');
+                if (meetings.length === 0) container.innerHTML = '<div class="bg-white rounded-xl p-12 text-center text-gray-500">No meetings yet. Create your first meeting!</div>';
+                else container.innerHTML = meetings.map(m => `<div class="bg-white rounded-xl p-6 shadow-sm cursor-pointer hover:shadow-md" onclick="alert('Meeting ID: ${m.id}\nTitle: ${m.title}\nDate: ${new Date(m.date).toLocaleDateString()}')"><div class="font-semibold">${m.title}</div><div class="text-sm text-gray-500">${new Date(m.date).toLocaleDateString()}</div>${m.status === 'completed' ? '<span class="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Completed</span>' : ''}</div>`).join('');
+            } catch (error) { localStorage.removeItem('token'); renderLanding(); }
+        }
+        
+        async function createMeeting() {
+            const title = prompt('Meeting title:'); if (!title) return;
+            const token = localStorage.getItem('token');
+            const res = await fetch('/api/meetings', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ title }) });
+            if (res.ok) { showToast('Meeting created!'); renderDashboard(); }
+            else { const err = await res.json(); showToast(err.error, 'error'); }
+        }
+        
+        function showTab(tab) {
+            document.getElementById('meetingsPanel').classList.add('hidden');
+            document.getElementById('pricingPanel').classList.add('hidden');
+            document.getElementById('settingsPanel').classList.add('hidden');
+            document.getElementById('meetingsBtn').className = 'pb-2 text-gray-500';
+            document.getElementById('pricingBtn').className = 'pb-2 text-gray-500';
+            document.getElementById('settingsBtn').className = 'pb-2 text-gray-500';
+            if (tab === 'meetings') { document.getElementById('meetingsPanel').classList.remove('hidden'); document.getElementById('meetingsBtn').className = 'pb-2 border-b-2 border-blue-500 text-blue-600'; }
+            if (tab === 'pricing') { document.getElementById('pricingPanel').classList.remove('hidden'); document.getElementById('pricingBtn').className = 'pb-2 border-b-2 border-blue-500 text-blue-600'; }
+            if (tab === 'settings') { document.getElementById('settingsPanel').classList.remove('hidden'); document.getElementById('settingsBtn').className = 'pb-2 border-b-2 border-blue-500 text-blue-600'; }
+        }
+        
+        function logout() { localStorage.removeItem('token'); authToken = null; renderLanding(); showToast('Logged out'); }
+        function scrollToTop() { window.scrollTo({ top: 0, behavior: 'smooth' }); }
+        
+        checkAuth();
+    </script>
+</body>
+</html>
