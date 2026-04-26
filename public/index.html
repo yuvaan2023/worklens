@@ -148,7 +148,7 @@
                                 <span class="text-xl font-bold">WorkLens AI</span>
                             </div>
                             <div class="flex items-center gap-4">
-                                <span class="px-3 py-1 bg-gray-100 rounded-full text-sm">${subscription.plan === 'free' ? 'Free' : 'Pro'} Plan</span>
+                                <span class="px-3 py-1 bg-gray-100 rounded-full text-sm">Free Plan</span>
                                 <button onclick="logout()" class="text-red-600">Logout</button>
                             </div>
                         </div>
@@ -170,13 +170,26 @@
                             <div id="meetingsList" class="space-y-4"></div>
                         </div>
                         <div id="pricingPanel" class="hidden"><div class="grid md:grid-cols-3 gap-8"><div class="bg-white rounded-xl p-6"><h3 class="text-xl font-bold">Free</h3><div class="text-3xl font-bold mt-2">$0</div><ul class="mt-4 space-y-2"><li>✓ 5 meetings/month</li><li>✓ 100MB storage</li></ul><button class="w-full mt-6 bg-gray-100 py-2 rounded-lg">Current Plan</button></div><div class="bg-white rounded-xl p-6 ring-2 ring-blue-500"><div class="bg-blue-500 text-white px-3 py-1 rounded-full inline-block text-sm">Popular</div><h3 class="text-xl font-bold mt-2">Pro</h3><div class="text-3xl font-bold">$19</div><p class="text-gray-600 text-sm">per month</p><ul class="mt-4 space-y-2"><li>✓ 100 meetings/month</li><li>✓ 10GB storage</li><li>✓ AI summaries</li><li>✓ Action items</li></ul><button onclick="alert('Upgrade coming soon')" class="w-full mt-6 bg-blue-600 text-white py-2 rounded-lg">Upgrade</button></div><div class="bg-white rounded-xl p-6"><h3 class="text-xl font-bold">Business</h3><div class="text-3xl font-bold mt-2">$49</div><ul class="mt-4 space-y-2"><li>✓ 500 meetings/month</li><li>✓ Team collaboration</li></ul><button onclick="alert('Contact sales')" class="w-full mt-6 bg-gray-100 py-2 rounded-lg">Contact</button></div></div></div>
-                        <div id="settingsPanel" class="hidden"><div class="bg-white rounded-xl p-6"><h2 class="text-xl font-bold mb-4">Account Settings</h2><p><strong>Plan:</strong> ${subscription.plan}</p><p><strong>Meetings limit:</strong> ${subscription.meeting_limit || 5} per month</p><button onclick="if(confirm('Delete account?')) alert('Contact support')" class="mt-4 text-red-600">Delete Account</button></div></div>
+                        <div id="settingsPanel" class="hidden"><div class="bg-white rounded-xl p-6"><h2 class="text-xl font-bold mb-4">Account Settings</h2><p><strong>Plan:</strong> Free</p><p><strong>Meetings limit:</strong> 5 per month</p><button onclick="if(confirm('Delete account?')) alert('Contact support')" class="mt-4 text-red-600">Delete Account</button></div></div>
                     </div>
                 `;
                 const container = document.getElementById('meetingsList');
-                if (meetings.length === 0) container.innerHTML = '<div class="bg-white rounded-xl p-12 text-center text-gray-500">No meetings yet. Create your first meeting!</div>';
-                else container.innerHTML = meetings.map(m => `<div class="bg-white rounded-xl p-6 shadow-sm cursor-pointer hover:shadow-md" onclick="alert('Meeting ID: ${m.id}\nTitle: ${m.title}\nDate: ${new Date(m.date).toLocaleDateString()}')"><div class="font-semibold">${m.title}</div><div class="text-sm text-gray-500">${new Date(m.date).toLocaleDateString()}</div>${m.status === 'completed' ? '<span class="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Completed</span>' : ''}</div>`).join('');
+                if (meetings.length === 0) {
+                    container.innerHTML = '<div class="bg-white rounded-xl p-12 text-center text-gray-500">No meetings yet. Create your first meeting!</div>';
+                } else {
+                    container.innerHTML = meetings.map(m => `
+                        <div class="bg-white rounded-xl p-6 shadow-sm cursor-pointer hover:shadow-md" onclick="viewMeeting(${m.id})">
+                            <div class="font-semibold">${m.title}</div>
+                            <div class="text-sm text-gray-500">${new Date(m.date).toLocaleDateString()}</div>
+                            ${m.status === 'completed' ? '<span class="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Completed</span>' : ''}
+                        </div>
+                    `).join('');
+                }
             } catch (error) { localStorage.removeItem('token'); renderLanding(); }
+        }
+        
+        function viewMeeting(id) {
+            window.location.href = `/meeting.html?id=${id}`;
         }
         
         async function createMeeting() {
